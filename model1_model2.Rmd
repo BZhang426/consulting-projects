@@ -1,0 +1,248 @@
+---
+title: "Modeling for Children Lying"
+author: "Jingrong Cheng, Yue Ren, Bo Zhang"
+date: "February 19, 2017"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(readr)
+```
+```{r, warning=FALSE, include=FALSE}
+setwd("C:/Users/Jingrong/Desktop/MSSP/676/Project/children lying")
+lying1 <- read_csv("C:/Users/Jingrong/Desktop/MSSP/676/Project/children lying/lying1.csv")
+```
+
+```{r, warning=FALSE}
+# fit multi nom for experiment 1 
+# without considering hiding location
+library(ggplot2)
+library(nnet)
+mod <- multinom(dis~age_gp+condition+gender,lying1)
+summary(mod)
+exp(coef(mod))
+library(MASS)
+library(Matrix)
+library(lme4)
+library(arm)
+#check binned residual for model1-experi 1
+binnedplot(fitted(mod), resid(mod))
+
+
+#predict the probability for each child under different groups 
+prob_for_child <- predict(mod,lying1,"probs")
+
+#calculating p-value for coefficents in multi-nom model for experi 1
+z.value<- summary(mod)$coefficients/summary(mod)$standard.errors
+p.value<- (1- pnorm(abs(z.value), 0, 1))*2
+p.value
+
+#create prob table for multi-nom model
+pre <- lying1[,c(4:6)]
+pre$id<-seq.int(nrow(pre))
+pre.pro<- pre[c(1,2,3,8,17,21,23,25),]
+predicted.prob <- predict(mod,newdata=pre.pro,type="probs")
+
+predicted.prob <- as.data.frame(predicted.prob)
+pred.prob <- cbind(pre.pro,predicted.prob)
+
+pred.prob$id<-NULL
+pred.prob[,4:7]<-round(pred.prob[,4:7], 2)
+kable(pred.prob)
+
+#ordinal logistic model for experiment 1 without
+#considering hiding location
+model.polr1<- polr(factor(dis)~age_gp+condition+gender, lying1)
+summary(model.polr1)
+
+#predict probability for each groups of children
+#by using ordinal model-experi 1
+predicted.polr <- predict(model.polr1,newdata=pre.pro,type="probs")
+
+predicted.polr <- as.data.frame(round(predicted.polr,2))
+table.polr1 <- cbind(pre.pro,predicted.polr)
+table.polr1$id<-NULL
+#create predicted probability table for ordinal model-experi 1
+table.polr1
+
+```
+
+
+```{r, warning=FALSE, }
+#clean and organize data
+lying2<-read_csv("C:/Users/Jingrong/Desktop/MSSP/676/Project/children lying/MoralLying2.csv")
+newdata<-data.frame(lying2$AgeGroup, lying2$Condition, lying2$Gender, lying2$`If yes, how far?`)
+colnames(newdata)<-c("agegroup","condition","gender","dis")
+newdata$agegroup <- ifelse(newdata$agegroup == 1,0,1)
+
+#multi-nomi model for experi 2 without
+#considering hiding location
+model2 <- multinom(dis~agegroup+condition+gender,newdata)
+summary(model2)
+exp(coef(model2))
+#check binned residual for experiment 2- multinoimal model
+binnedplot(fitted(model2), resid(model2))
+
+
+#probability for each child
+each_prob <- predict(model2,newdata,"probs")
+#p-value for coefficients
+z.value2<- summary(model2)$coefficients/summary(model2)$standard.errors
+p.value2<- (1- pnorm(abs(z.value2), 0, 1))*2
+p.value2
+
+#create predicted probaility table for multi-nomi model-experi2
+pre2 <- data.frame(newdata$agegroup, newdata$condition, newdata$gender)
+colnames(pre2)<-c("agegroup","condition","gender")
+pre2$id<-seq.int(nrow(pre2))
+
+pre2.pro<- pre2[c(1,2,9,8,13,14,56,57,64,65,75,74),]
+
+predicted.prob2 <- predict(model2,newdata=pre2.pro,type="probs")
+
+predicted.prob2 <- as.data.frame(predicted.prob2)
+pred.prob2 <- cbind(pre2.pro,predicted.prob2)
+
+pred.prob2$id<-NULL
+pred.prob2[,4:7]<-round(pred.prob2[,4:7],2)
+pred.prob2
+
+#fit ordinal logistic model for experi2
+#without considering hiding location
+library(MASS)
+#ordered logit model
+model.polr2<- polr(factor(dis)~agegroup+condition+gender,newdata)
+summary(model.polr2)
+
+#create predicted probability table by using ordinal model-experi2
+predicted.polr2 <- predict(model.polr2,newdata=pre2.pro,type="probs")
+
+predicted.polr2 <- as.data.frame(round(predicted.prob2,2))
+table.polr2 <- cbind(pre2.pro,predicted.polr2)
+table.polr2$id<-NULL
+table.polr2
+
+```
+
+Let's consider hiding location.
+
+```{r}
+hid.experi1<-readRDS("lying_new.rds")
+#fit multinomial model for experiemnt 1, observation =97
+#hiding location is rocks= 52
+#hiding location is fence = 45
+multi.nom.hid.1<-multinom(factor(dis)~age_gp+condition+gender+factor(hide),hid.experi1)
+summary(multi.nom.hid.1)
+
+#calculating p-value for coefficents in multi-nom model for experi 1
+z.value<- summary(multi.nom.hid.1)$coefficients/summary(multi.nom.hid.1)$standard.errors
+p.value<- (1- pnorm(abs(z.value), 0, 1))*2
+p.value
+
+#binned residual plots
+binnedplot(fitted(multi.nom.hid.1), resid(multi.nom.hid.1))
+
+#create prob table for multi-nom model
+extra.data1 <- hid.experi1[,c(3:5,9)]
+extra.data1$id<-seq.int(nrow(extra.data1))
+prob.combination1<- extra.data1[c(1,20,28,25,93,44,72,6,5,18,19,17,4,2,11,3),]
+pred.prob.nom.hid1 <- predict(multi.nom.hid.1,newdata=prob.combination1,type="probs")
+
+pred.prob.nom.hid1 <- as.data.frame(round(pred.prob.nom.hid1,2))
+pred.prob.nom.hid1<- cbind(prob.combination1,pred.prob.nom.hid1)
+
+pred.prob.nom.hid1$id<-NULL
+kable(pred.prob.nom.hid1)
+```
+
+experiment 1 for ordinal logistic model
+```{r}
+#fit ordinal logistic model for experiemnt 1, observation =97
+ord.hid.1<- polr(factor(dis)~age_gp+condition+gender+hide, hid.experi1)
+summary(ord.hid.1)
+
+#calculate p-value
+z.value<- summary(ord.hid.1)$coefficients[,1]/summary(ord.hid.1)$coefficients[,2]
+p.value<- (1- pnorm(abs(z.value), 0, 1))*2
+p.value
+#binned residual plots
+binnedplot(fitted(ord.hid.1), resid(ord.hid.1))
+
+#create prob table for ordinal logit
+
+pred.prob.ord.hid1 <- predict(ord.hid.1,newdata=prob.combination1,type="probs")
+
+pred.prob.ord.hid1 <- as.data.frame(round(pred.prob.ord.hid1,2))
+pred.prob.ord.hid1<- cbind(prob.combination1,pred.prob.ord.hid1)
+
+pred.prob.ord.hid1$id<-NULL
+kable(pred.prob.ord.hid1)
+```
+
+```{r}
+hid.experi2<-readRDS("lying2_new.rds")
+#fit multinomial model for experiemnt 2, observation =108
+#hiding location is rocks= 94
+#hiding location is fence =14
+multi.nom.hid.2<-multinom(factor(dis)~agegroup+condition+gender+factor(hide),hid.experi2)
+summary(multi.nom.hid.2)
+
+#calculating p-value for coefficents in multi-nom model for experi 1
+z.value<- summary(multi.nom.hid.2)$coefficients/summary(multi.nom.hid.2)$standard.errors
+p.value<- (1- pnorm(abs(z.value), 0, 1))*2
+p.value
+
+#binned residual plots
+binnedplot(fitted(multi.nom.hid.2), resid(multi.nom.hid.2))
+
+#create prob table for multi-nom model
+extra.data2 <- hid.experi2[,c(1:3,6)]
+extra.data2$id<-seq.int(nrow(extra.data2))
+
+a<-unique(extra.data2[,1:4])
+#it doesn't exist the situation of age=0, condition=2, female, hide=1
+
+prob.combination2<- extra.data2[c(1,2,8,9,11,13,14,16,24,30,53,55,57,61,64,65,67,74,75,76,77,88,98),]
+pred.prob.nom.hid2 <- predict(multi.nom.hid.2,newdata=prob.combination2,type="probs")
+
+pred.prob.nom.hid2 <- as.data.frame(round(pred.prob.nom.hid2,2))
+pred.prob.nom.hid2<- cbind(prob.combination2,pred.prob.nom.hid2)
+
+pred.prob.nom.hid2$id<-NULL
+kable(pred.prob.nom.hid2)
+```
+
+ordinal logistic model for experiment 2
+```{r}
+
+
+ord.hid.2<- polr(factor(dis)~agegroup+condition+gender+hide, hid.experi2)
+summary(ord.hid.2)
+
+#calculate p-value
+z.value<- summary(ord.hid.2)$coefficients[,1]/summary(ord.hid.2)$coefficients[,2]
+p.value<- (1- pnorm(abs(z.value), 0, 1))*2
+p.value
+#binned residual plots
+binnedplot(fitted(ord.hid.2), resid(ord.hid.2))
+
+#create prob table for ordinal logit
+
+
+pred.prob.ord.hid2 <- predict(ord.hid.2,newdata=prob.combination2,type="probs")
+
+pred.prob.ord.hid2 <- as.data.frame(round(pred.prob.ord.hid2,2))
+pred.prob.ord.hid2<- cbind(prob.combination2,pred.prob.ord.hid2)
+#it doesn't exist the situation of age=0, condition=2, female, hide=1
+#therefore, total 23 situations
+pred.prob.ord.hid2$id<-NULL
+kable(pred.prob.ord.hid2)
+
+
+```
+
